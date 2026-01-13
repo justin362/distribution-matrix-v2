@@ -36,27 +36,28 @@ async function initializeDatabase() {
   }
 
   try {
-    // Initialize with sample data
+    // Initialize with generic sample data
     const sampleClients = [
-      { id: '1', name: 'GCC-PvL', status: 'Active', statusDate: null },
-      { id: '2', name: 'GCC-IV', status: 'Active', statusDate: null },
-      { id: '3', name: 'CRP', status: 'Active', statusDate: null },
-      { id: '4', name: 'Purell', status: 'Live', statusDate: 'January 2026' },
-      { id: '5', name: 'Hot Logic', status: 'Active', statusDate: null },
+      { id: '1', name: 'Sample Client A', status: 'Active', statusDate: null },
+      { id: '2', name: 'Sample Client B', status: 'Active', statusDate: null },
+      { id: '3', name: 'Sample Client C', status: 'Live', statusDate: 'Q1 2026' },
+      { id: '4', name: 'Sample Client D', status: 'Projected', statusDate: 'Q2 2026' },
+      { id: '5', name: 'Sample Client E', status: 'Recruiting', statusDate: null },
     ];
 
     const sampleRetailers = [
-      { id: 'walmart', name: 'Walmart', category: 'Physical', type: 'Mass Merchant', contacts: [], lineReviewTiming: '', resetDates: '', notes: '' },
-      { id: 'target', name: 'Target', category: 'Physical', type: 'Mass Merchant', contacts: [], lineReviewTiming: '', resetDates: '', notes: '' },
-      { id: 'costco', name: 'Costco', category: 'Physical', type: 'Warehouse', contacts: [], lineReviewTiming: '', resetDates: '', notes: '' },
-      { id: 'amazon', name: 'Amazon', category: 'Digital', type: 'E-commerce', contacts: [], lineReviewTiming: '', resetDates: '', notes: '' },
+      { id: 'retailer-1', name: 'Retailer 1', category: 'Physical', type: 'Mass Merchant', contacts: [], lineReviewTiming: '', resetDates: '', notes: '' },
+      { id: 'retailer-2', name: 'Retailer 2', category: 'Physical', type: 'Warehouse', contacts: [], lineReviewTiming: '', resetDates: '', notes: '' },
+      { id: 'retailer-3', name: 'Retailer 3', category: 'Physical', type: 'Grocery', contacts: [], lineReviewTiming: '', resetDates: '', notes: '' },
+      { id: 'retailer-4', name: 'Retailer 4', category: 'Digital', type: 'E-commerce', contacts: [], lineReviewTiming: '', resetDates: '', notes: '' },
     ];
 
     const sampleDistributions = [
-      { clientId: '1', retailerId: 'walmart', status: 'shelves', notes: '' },
-      { clientId: '1', retailerId: 'target', status: 'shelves', notes: '' },
-      { clientId: '2', retailerId: 'costco', status: 'shelves-screens', notes: '' },
-      { clientId: '3', retailerId: 'amazon', status: 'shelves-screens', notes: '' },
+      { clientId: '1', retailerId: 'retailer-1', status: 'shelves', notes: '' },
+      { clientId: '1', retailerId: 'retailer-2', status: 'shelves', notes: '' },
+      { clientId: '2', retailerId: 'retailer-1', status: 'shelves-screens', notes: '' },
+      { clientId: '2', retailerId: 'retailer-3', status: 'shelves-screens', notes: '' },
+      { clientId: '3', retailerId: 'retailer-4', status: 'shelves-screens', notes: '' },
     ];
 
     // Store initial data
@@ -80,25 +81,26 @@ initializeDatabase().catch(error => {
 // Helper function to initialize sample data for new users
 async function initializeSampleDataForUser(userId: string) {
   const sampleClients = [
-    { id: '1', name: 'GCC-PvL', status: 'Active', statusDate: null },
-    { id: '2', name: 'GCC-IV', status: 'Active', statusDate: null },
-    { id: '3', name: 'CRP', status: 'Active', statusDate: null },
-    { id: '4', name: 'Purell', status: 'Live', statusDate: 'January 2026' },
-    { id: '5', name: 'Hot Logic', status: 'Active', statusDate: null },
+    { id: '1', name: 'Sample Client A', status: 'Active', statusDate: null },
+    { id: '2', name: 'Sample Client B', status: 'Active', statusDate: null },
+    { id: '3', name: 'Sample Client C', status: 'Live', statusDate: 'Q1 2026' },
+    { id: '4', name: 'Sample Client D', status: 'Projected', statusDate: 'Q2 2026' },
+    { id: '5', name: 'Sample Client E', status: 'Recruiting', statusDate: null },
   ];
 
   const sampleRetailers = [
-    { id: 'walmart', name: 'Walmart', category: 'Physical', type: 'Mass Merchant', contacts: [], lineReviewTiming: '', resetDates: '', notes: '' },
-    { id: 'target', name: 'Target', category: 'Physical', type: 'Mass Merchant', contacts: [], lineReviewTiming: '', resetDates: '', notes: '' },
-    { id: 'costco', name: 'Costco', category: 'Physical', type: 'Warehouse', contacts: [], lineReviewTiming: '', resetDates: '', notes: '' },
-    { id: 'amazon', name: 'Amazon', category: 'Digital', type: 'E-commerce', contacts: [], lineReviewTiming: '', resetDates: '', notes: '' },
+    { id: 'retailer-1', name: 'Retailer 1', category: 'Physical', type: 'Mass Merchant', contacts: [], lineReviewTiming: '', resetDates: '', notes: '' },
+    { id: 'retailer-2', name: 'Retailer 2', category: 'Physical', type: 'Warehouse', contacts: [], lineReviewTiming: '', resetDates: '', notes: '' },
+    { id: 'retailer-3', name: 'Retailer 3', category: 'Physical', type: 'Grocery', contacts: [], lineReviewTiming: '', resetDates: '', notes: '' },
+    { id: 'retailer-4', name: 'Retailer 4', category: 'Digital', type: 'E-commerce', contacts: [], lineReviewTiming: '', resetDates: '', notes: '' },
   ];
 
   const sampleDistributions = [
-    { clientId: '1', retailerId: 'walmart', status: 'shelves', notes: '' },
-    { clientId: '1', retailerId: 'target', status: 'shelves', notes: '' },
-    { clientId: '2', retailerId: 'costco', status: 'shelves-screens', notes: '' },
-    { clientId: '3', retailerId: 'amazon', status: 'shelves-screens', notes: '' },
+    { clientId: '1', retailerId: 'retailer-1', status: 'shelves', notes: '' },
+    { clientId: '1', retailerId: 'retailer-2', status: 'shelves', notes: '' },
+    { clientId: '2', retailerId: 'retailer-1', status: 'shelves-screens', notes: '' },
+    { clientId: '2', retailerId: 'retailer-3', status: 'shelves-screens', notes: '' },
+    { clientId: '3', retailerId: 'retailer-4', status: 'shelves-screens', notes: '' },
   ];
 
   // For now, use global keys (would be user-specific in production)
