@@ -19,7 +19,11 @@
       "Bash(vercel --version:*)",
       "Bash(vercel)",
       "Bash(vercel login:*)",
-      "Bash(vercel:*)"
+      "Bash(vercel:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nUpdate sample data to be generic\n\n- Replace business-specific client names with generic placeholders\n- Replace specific retailer names with generic \"Retailer 1-4\"\n- Simplify distribution relationships for demo purposes\n- Affects both frontend fallback data and backend initialization\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(curl:*)",
+      "Bash(grep:*)",
+      "Bash(git commit:*)"
     ]
   }
 }

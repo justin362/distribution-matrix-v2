@@ -54,11 +54,11 @@ export function MatrixView({ clients, retailers, distributions, onCellClick, onR
               <th className="sticky left-0 z-20 bg-gray-50 border-r-2 border-gray-300 px-4 py-3 text-left">
                 <div className="text-sm font-semibold text-gray-700">Client Status</div>
               </th>
-              <th colSpan={physicalRetailers.length} className="border-r-2 border-gray-300 px-4 py-3 text-center bg-indigo-50">
-                <div className="text-sm font-semibold text-indigo-900">Physical</div>
+              <th colSpan={physicalRetailers.length} className="border-r-2 border-gray-300 px-4 py-3 text-center bg-emerald-50">
+                <div className="text-sm font-semibold text-emerald-900">Physical</div>
               </th>
-              <th colSpan={digitalRetailers.length} className="px-4 py-3 text-center bg-purple-50">
-                <div className="text-sm font-semibold text-purple-900">Digital</div>
+              <th colSpan={digitalRetailers.length} className="px-4 py-3 text-center bg-orange-50">
+                <div className="text-sm font-semibold text-orange-900">Digital</div>
               </th>
             </tr>
             <tr className="bg-gray-100 border-t border-gray-200">
@@ -66,7 +66,7 @@ export function MatrixView({ clients, retailers, distributions, onCellClick, onR
               {physicalRetailers.map(retailer => (
                 <th 
                   key={retailer.id} 
-                  className="px-2 py-2 text-xs font-medium text-gray-700 border-l border-gray-200 cursor-pointer hover:bg-indigo-100 transition-colors"
+                  className="px-2 py-2 text-xs font-medium text-gray-700 border-l border-gray-200 cursor-pointer hover:bg-emerald-100 transition-colors"
                   onClick={() => onRetailerClick(retailer)}
                 >
                   <div className="whitespace-nowrap">{retailer.name}</div>
@@ -76,7 +76,7 @@ export function MatrixView({ clients, retailers, distributions, onCellClick, onR
               {digitalRetailers.map(retailer => (
                 <th 
                   key={retailer.id} 
-                  className="px-2 py-2 text-xs font-medium text-gray-700 border-l border-gray-200 cursor-pointer hover:bg-purple-100 transition-colors"
+                  className="px-2 py-2 text-xs font-medium text-gray-700 border-l border-gray-200 cursor-pointer hover:bg-orange-100 transition-colors"
                   onClick={() => onRetailerClick(retailer)}
                 >
                   <div className="whitespace-nowrap">{retailer.name}</div>

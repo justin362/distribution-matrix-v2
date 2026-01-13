@@ -31,3 +31,59 @@ export interface Distribution {
   status: 'shelves' | 'shelves-screens' | 'x-client' | '';
   notes: string;
 }
+
+// Analytics types
+export interface DailySnapshot {
+  date: string;
+  totalClients: number;
+  totalRetailers: number;
+  totalDistributions: number;
+  clientsByStatus: Record<string, number>;
+  distributionCoverage: number;
+}
+
+export interface AnalyticsData {
+  current: {
+    totalClients: number;
+    totalRetailers: number;
+    totalDistributions: number;
+    distributionCoverage: number;
+  };
+  clientsByStatus: Record<string, number>;
+  history: DailySnapshot[];
+}
+
+// Multi-User Organization types
+export type UserRole = 'admin' | 'editor' | 'viewer';
+
+export interface Organization {
+  id: string;
+  name: string;
+  createdAt: string;
+  createdBy: string;
+}
+
+export interface OrganizationMember {
+  userId: string;
+  email: string;
+  name: string;
+  role: UserRole;
+  joinedAt: string;
+}
+
+export interface OrganizationInvite {
+  id: string;
+  orgId: string;
+  email: string;
+  role: UserRole;
+  status: 'pending' | 'accepted' | 'expired';
+  createdAt: string;
+}
+
+export interface UserProfile {
+  userId: string;
+  email: string;
+  name: string;
+  currentOrgId: string | null;
+  organizations: { orgId: string; role: UserRole }[];
+}

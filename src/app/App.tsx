@@ -11,8 +11,9 @@ import { RetailerManagement } from './components/RetailerManagement';
 import { OfflineBanner } from './components/OfflineBanner';
 import { Login } from './components/Login';
 import { SettingsPanel } from './components/SettingsPanel';
+import { Dashboard } from './components/Dashboard';
 import { projectId, publicAnonKey } from '/utils/supabase/info';
-import type { Client, Retailer, Distribution } from './types';
+import type { Client, Retailer, Distribution, AnalyticsData } from './types';
 
 const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-27d977d5`;
 
@@ -55,7 +56,9 @@ export default function App() {
   const [showClientManagement, setShowClientManagement] = useState(false);
   const [showRetailerManagement, setShowRetailerManagement] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  
+  const [showDashboard, setShowDashboard] = useState(false);
+  const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
+
   // Auth state
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userEmail, setUserEmail] = useState('');
@@ -223,6 +226,9 @@ export default function App() {
       setDistributions(distributionsData);
       setError(null);
       setUseLocalData(false);
+
+      // Fetch analytics data
+      fetchAnalytics();
     } catch (err) {
       // Silently fall back to local data - this is expected behavior
       if (!useLocalData) {
@@ -235,6 +241,32 @@ export default function App() {
       setUseLocalData(true);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchAnalytics = async () => {
+    try {
+      const response = await fetch(`${API_URL}/analytics`, {
+        headers: { Authorization: `Bearer ${publicAnonKey}` },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setAnalyticsData(data);
+      }
+    } catch (err) {
+      console.log('Could not fetch analytics data');
+    }
+  };
+
+  const createAnalyticsSnapshot = async () => {
+    if (useLocalData) return;
+    try {
+      await fetch(`${API_URL}/analytics/snapshot`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${publicAnonKey}` },
+      });
+    } catch (err) {
+      // Silently fail - analytics snapshot is not critical
     }
   };
 
@@ -288,6 +320,8 @@ export default function App() {
 
       // Refresh data immediately after update
       await fetchAllData();
+      // Create analytics snapshot after data change
+      createAnalyticsSnapshot();
     } catch (err) {
       console.error('Error updating distribution:', err);
       alert('Failed to save changes. Please try again.');
@@ -492,10 +526,11 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header 
+      <Header
         onToggleActivity={() => setShowActivityFeed(!showActivityFeed)}
         onManageClients={() => setShowClientManagement(true)}
         onManageRetailers={() => setShowRetailerManagement(true)}
+        onDashboard={() => setShowDashboard(true)}
         onSettings={() => setShowSettings(true)}
         onLogout={handleLogout}
         userEmail={userEmail}
@@ -586,6 +621,16 @@ export default function App() {
           totalClients={clients.length}
           totalRetailers={retailers.length}
           totalDistributions={distributions.length}
+        />
+      )}
+
+      {showDashboard && (
+        <Dashboard
+          onClose={() => setShowDashboard(false)}
+          clients={clients}
+          retailers={retailers}
+          distributions={distributions}
+          analyticsData={analyticsData}
         />
       )}
     </div>

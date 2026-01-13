@@ -26,7 +26,7 @@ export function SettingsPanel({
     <>
       <div className="fixed inset-0 bg-black/50 z-40" onClick={onClose}></div>
       <div className="fixed right-0 top-0 bottom-0 w-full max-w-2xl bg-white shadow-2xl z-50 overflow-y-auto">
-        <div className="sticky top-0 bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-6 shadow-lg">
+        <div className="sticky top-0 bg-gradient-to-r from-[#34A16E] to-[#2d8a5e] text-white p-6 shadow-lg">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-3">
               <div className="bg-white/10 p-2 rounded-lg backdrop-blur-sm">
@@ -34,7 +34,7 @@ export function SettingsPanel({
               </div>
               <div>
                 <h2 className="text-xl font-bold">Settings</h2>
-                <p className="text-indigo-100 text-sm mt-0.5">Manage your account and data</p>
+                <p className="text-emerald-100 text-sm mt-0.5">Manage your account and data</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -59,8 +59,8 @@ export function SettingsPanel({
           {/* User Info */}
           <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
             <div className="flex items-center gap-3 mb-4">
-              <div className="bg-indigo-100 p-2 rounded-lg">
-                <User className="w-5 h-5 text-indigo-600" />
+              <div className="bg-emerald-100 p-2 rounded-lg">
+                <User className="w-5 h-5 text-[#34A16E]" />
               </div>
               <h3 className="text-lg font-semibold text-gray-900">Account Information</h3>
             </div>

@@ -79,7 +79,7 @@ export function ClientManagement({
     <>
       <div className="fixed inset-0 bg-black/50 z-40" onClick={onClose}></div>
       <div className="fixed right-0 top-0 bottom-0 w-full max-w-2xl bg-white shadow-2xl z-50 overflow-y-auto">
-        <div className="sticky top-0 bg-gradient-to-r from-indigo-600 to-purple-600 text-white p-6 shadow-lg">
+        <div className="sticky top-0 bg-gradient-to-r from-[#34A16E] to-[#2d8a5e] text-white p-6 shadow-lg">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-3">
               <div className="bg-white/10 p-2 rounded-lg backdrop-blur-sm">
@@ -87,7 +87,7 @@ export function ClientManagement({
               </div>
               <div>
                 <h2 className="text-xl font-bold">Manage Clients</h2>
-                <p className="text-indigo-100 text-sm mt-0.5">Add, edit, or remove clients</p>
+                <p className="text-emerald-100 text-sm mt-0.5">Add, edit, or remove clients</p>
               </div>
             </div>
             <button
@@ -104,7 +104,7 @@ export function ClientManagement({
           {!isAdding && (
             <button
               onClick={() => setIsAdding(true)}
-              className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-3 px-4 rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2 font-medium"
+              className="w-full bg-gradient-to-r from-[#34A16E] to-[#2d8a5e] text-white py-3 px-4 rounded-lg hover:from-[#2d8a5e] hover:to-[#246b4a] transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2 font-medium"
             >
               <Plus className="w-5 h-5" />
               Add New Client
@@ -113,7 +113,7 @@ export function ClientManagement({
 
           {/* Add/Edit Form */}
           {isAdding && (
-            <div className="bg-white border-2 border-indigo-200 rounded-lg p-6 shadow-lg">
+            <div className="bg-white border-2 border-emerald-200 rounded-lg p-6 shadow-lg">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">
                 {editingId ? 'Edit Client' : 'New Client'}
               </h3>
@@ -126,7 +126,7 @@ export function ClientManagement({
                     type="text"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#34A16E] focus:border-transparent"
                     placeholder="Enter client name"
                     required
                   />
@@ -139,7 +139,7 @@ export function ClientManagement({
                   <select
                     value={formData.status}
                     onChange={(e) => setFormData({ ...formData, status: e.target.value as Client['status'] })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent bg-white"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#34A16E] focus:border-transparent bg-white"
                   >
                     <option value="Active">Active</option>
                     <option value="Live">Live</option>
@@ -156,7 +156,7 @@ export function ClientManagement({
                     type="text"
                     value={formData.statusDate}
                     onChange={(e) => setFormData({ ...formData, statusDate: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#34A16E] focus:border-transparent"
                     placeholder="e.g., January 2026"
                   />
                 </div>
@@ -164,7 +164,7 @@ export function ClientManagement({
                 <div className="flex gap-3 pt-2">
                   <button
                     type="submit"
-                    className="flex-1 bg-indigo-600 text-white py-2 px-4 rounded-lg hover:bg-indigo-700 transition-colors font-medium"
+                    className="flex-1 bg-[#34A16E] text-white py-2 px-4 rounded-lg hover:bg-[#2d8a5e] transition-colors font-medium"
                   >
                     {editingId ? 'Update Client' : 'Add Client'}
                   </button>
@@ -212,7 +212,7 @@ export function ClientManagement({
                       <div className="flex gap-2">
                         <button
                           onClick={() => handleEdit(client)}
-                          className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                          className="p-2 text-[#34A16E] hover:bg-emerald-50 rounded-lg transition-colors"
                           title="Edit client"
                         >
                           <Edit2 className="w-4 h-4" />

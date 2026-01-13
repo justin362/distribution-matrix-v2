@@ -105,10 +105,10 @@ export function DataManagement({
         </div>
       )}
 
-      <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+      <div className="mt-4 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
         <div className="flex items-start gap-2">
-          <CheckCircle className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5" />
-          <p className="text-xs text-blue-900">
+          <CheckCircle className="w-4 h-4 text-[#34A16E] flex-shrink-0 mt-0.5" />
+          <p className="text-xs text-emerald-900">
             <strong>Tip:</strong> You can clear the sample data when you're ready to add your own clients and retailers. 
             This gives you a clean slate to build your custom distribution matrix.
           </p>

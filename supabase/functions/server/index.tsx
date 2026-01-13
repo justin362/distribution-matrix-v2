@@ -557,4 +557,548 @@ app.get('/make-server-27d977d5/activity', async (c) => {
   }
 });
 
+// Get analytics data
+app.get('/make-server-27d977d5/analytics', async (c) => {
+  try {
+    const clients = await kvStore.get('clients') || [];
+    const retailers = await kvStore.get('retailers') || [];
+    const distributions = await kvStore.get('distributions') || [];
+    const analyticsHistory = await kvStore.get('analytics_history') || [];
+
+    // Calculate current metrics
+    const totalClients = clients.length;
+    const totalRetailers = retailers.length;
+    const activeDistributions = distributions.filter((d: any) => d.status && d.status !== '');
+    const totalDistributions = activeDistributions.length;
+
+    // Calculate distribution coverage (% of possible client-retailer pairs that have a distribution)
+    const possibleDistributions = totalClients * totalRetailers;
+    const distributionCoverage = possibleDistributions > 0
+      ? Math.round((totalDistributions / possibleDistributions) * 100)
+      : 0;
+
+    // Calculate clients by status
+    const clientsByStatus: Record<string, number> = {};
+    clients.forEach((client: any) => {
+      clientsByStatus[client.status] = (clientsByStatus[client.status] || 0) + 1;
+    });
+
+    return c.json({
+      current: {
+        totalClients,
+        totalRetailers,
+        totalDistributions,
+        distributionCoverage,
+      },
+      clientsByStatus,
+      history: analyticsHistory.slice(0, 30), // Return last 30 days
+    });
+  } catch (error) {
+    console.error('Error fetching analytics:', error);
+    return c.json({ error: 'Failed to fetch analytics' }, 500);
+  }
+});
+
+// Create/update analytics snapshot (called when data changes)
+app.post('/make-server-27d977d5/analytics/snapshot', async (c) => {
+  try {
+    const clients = await kvStore.get('clients') || [];
+    const retailers = await kvStore.get('retailers') || [];
+    const distributions = await kvStore.get('distributions') || [];
+    const analyticsHistory = await kvStore.get('analytics_history') || [];
+
+    const today = new Date().toISOString().split('T')[0];
+
+    // Calculate metrics
+    const totalClients = clients.length;
+    const totalRetailers = retailers.length;
+    const activeDistributions = distributions.filter((d: any) => d.status && d.status !== '');
+    const totalDistributions = activeDistributions.length;
+    const possibleDistributions = totalClients * totalRetailers;
+    const distributionCoverage = possibleDistributions > 0
+      ? Math.round((totalDistributions / possibleDistributions) * 100)
+      : 0;
+
+    // Calculate clients by status
+    const clientsByStatus: Record<string, number> = {};
+    clients.forEach((client: any) => {
+      clientsByStatus[client.status] = (clientsByStatus[client.status] || 0) + 1;
+    });
+
+    const snapshot = {
+      date: today,
+      totalClients,
+      totalRetailers,
+      totalDistributions,
+      clientsByStatus,
+      distributionCoverage,
+    };
+
+    // Update or add today's snapshot
+    const existingIndex = analyticsHistory.findIndex((s: any) => s.date === today);
+    if (existingIndex >= 0) {
+      analyticsHistory[existingIndex] = snapshot;
+    } else {
+      analyticsHistory.unshift(snapshot);
+    }
+
+    // Keep only last 90 days
+    if (analyticsHistory.length > 90) {
+      analyticsHistory.length = 90;
+    }
+
+    await kvStore.set('analytics_history', analyticsHistory);
+
+    return c.json(snapshot);
+  } catch (error) {
+    console.error('Error creating analytics snapshot:', error);
+    return c.json({ error: 'Failed to create analytics snapshot' }, 500);
+  }
+});
+
+// ===== ORGANIZATION MANAGEMENT =====
+
+// Helper to verify user token and get user info
+async function verifyUser(c: any) {
+  const authHeader = c.req.header('Authorization');
+  const token = authHeader?.replace('Bearer ', '');
+
+  if (!token) {
+    return null;
+  }
+
+  const supabase = createClient(
+    Deno.env.get('SUPABASE_URL') ?? '',
+    Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+  );
+
+  const { data, error } = await supabase.auth.getUser(token);
+  if (error || !data.user) {
+    return null;
+  }
+
+  return data.user;
+}
+
+// Get user profile with organizations
+app.get('/make-server-27d977d5/user/profile', async (c) => {
+  try {
+    const user = await verifyUser(c);
+    if (!user) {
+      return c.json({ error: 'Unauthorized' }, 401);
+    }
+
+    const profileKey = `user:${user.id}:profile`;
+    let profile = await kvStore.get(profileKey);
+
+    // Create profile if doesn't exist
+    if (!profile) {
+      profile = {
+        userId: user.id,
+        email: user.email,
+        name: user.user_metadata?.name || '',
+        currentOrgId: null,
+        organizations: [],
+      };
+      await kvStore.set(profileKey, profile);
+    }
+
+    return c.json(profile);
+  } catch (error) {
+    console.error('Error fetching user profile:', error);
+    return c.json({ error: 'Failed to fetch profile' }, 500);
+  }
+});
+
+// Create a new organization
+app.post('/make-server-27d977d5/organizations', async (c) => {
+  try {
+    const user = await verifyUser(c);
+    if (!user) {
+      return c.json({ error: 'Unauthorized' }, 401);
+    }
+
+    const { name } = await c.req.json();
+    if (!name) {
+      return c.json({ error: 'Organization name is required' }, 400);
+    }
+
+    const orgId = crypto.randomUUID();
+    const timestamp = new Date().toISOString();
+
+    const organization = {
+      id: orgId,
+      name,
+      createdAt: timestamp,
+      createdBy: user.id,
+    };
+
+    // Save organization
+    await kvStore.set(`org:${orgId}:info`, organization);
+
+    // Add creator as admin member
+    const members = [{
+      userId: user.id,
+      email: user.email,
+      name: user.user_metadata?.name || '',
+      role: 'admin',
+      joinedAt: timestamp,
+    }];
+    await kvStore.set(`org:${orgId}:members`, members);
+
+    // Initialize empty data for the org
+    await kvStore.set(`org:${orgId}:clients`, []);
+    await kvStore.set(`org:${orgId}:retailers`, []);
+    await kvStore.set(`org:${orgId}:distributions`, []);
+    await kvStore.set(`org:${orgId}:analytics_history`, []);
+
+    // Update user profile
+    const profileKey = `user:${user.id}:profile`;
+    let profile = await kvStore.get(profileKey) || {
+      userId: user.id,
+      email: user.email,
+      name: user.user_metadata?.name || '',
+      currentOrgId: null,
+      organizations: [],
+    };
+
+    profile.organizations.push({ orgId, role: 'admin' });
+    profile.currentOrgId = orgId;
+    await kvStore.set(profileKey, profile);
+
+    return c.json({ organization, role: 'admin' });
+  } catch (error) {
+    console.error('Error creating organization:', error);
+    return c.json({ error: 'Failed to create organization' }, 500);
+  }
+});
+
+// Get user's organizations
+app.get('/make-server-27d977d5/organizations', async (c) => {
+  try {
+    const user = await verifyUser(c);
+    if (!user) {
+      return c.json({ error: 'Unauthorized' }, 401);
+    }
+
+    const profileKey = `user:${user.id}:profile`;
+    const profile = await kvStore.get(profileKey);
+
+    if (!profile || !profile.organizations.length) {
+      return c.json([]);
+    }
+
+    const organizations = [];
+    for (const membership of profile.organizations) {
+      const org = await kvStore.get(`org:${membership.orgId}:info`);
+      if (org) {
+        organizations.push({ ...org, role: membership.role });
+      }
+    }
+
+    return c.json(organizations);
+  } catch (error) {
+    console.error('Error fetching organizations:', error);
+    return c.json({ error: 'Failed to fetch organizations' }, 500);
+  }
+});
+
+// Switch active organization
+app.post('/make-server-27d977d5/organizations/switch', async (c) => {
+  try {
+    const user = await verifyUser(c);
+    if (!user) {
+      return c.json({ error: 'Unauthorized' }, 401);
+    }
+
+    const { orgId } = await c.req.json();
+
+    const profileKey = `user:${user.id}:profile`;
+    const profile = await kvStore.get(profileKey);
+
+    if (!profile) {
+      return c.json({ error: 'Profile not found' }, 404);
+    }
+
+    // Verify user is member of the organization
+    const membership = profile.organizations.find((o: any) => o.orgId === orgId);
+    if (!membership) {
+      return c.json({ error: 'Not a member of this organization' }, 403);
+    }
+
+    profile.currentOrgId = orgId;
+    await kvStore.set(profileKey, profile);
+
+    return c.json({ success: true, currentOrgId: orgId, role: membership.role });
+  } catch (error) {
+    console.error('Error switching organization:', error);
+    return c.json({ error: 'Failed to switch organization' }, 500);
+  }
+});
+
+// Get organization members
+app.get('/make-server-27d977d5/organizations/:orgId/members', async (c) => {
+  try {
+    const user = await verifyUser(c);
+    if (!user) {
+      return c.json({ error: 'Unauthorized' }, 401);
+    }
+
+    const orgId = c.req.param('orgId');
+    const profileKey = `user:${user.id}:profile`;
+    const profile = await kvStore.get(profileKey);
+
+    // Verify user is member of this org
+    if (!profile?.organizations.some((o: any) => o.orgId === orgId)) {
+      return c.json({ error: 'Not a member of this organization' }, 403);
+    }
+
+    const members = await kvStore.get(`org:${orgId}:members`) || [];
+    return c.json(members);
+  } catch (error) {
+    console.error('Error fetching members:', error);
+    return c.json({ error: 'Failed to fetch members' }, 500);
+  }
+});
+
+// Invite user to organization (admin only)
+app.post('/make-server-27d977d5/organizations/:orgId/invite', async (c) => {
+  try {
+    const user = await verifyUser(c);
+    if (!user) {
+      return c.json({ error: 'Unauthorized' }, 401);
+    }
+
+    const orgId = c.req.param('orgId');
+    const { email, role } = await c.req.json();
+
+    if (!email || !role) {
+      return c.json({ error: 'Email and role are required' }, 400);
+    }
+
+    if (!['admin', 'editor', 'viewer'].includes(role)) {
+      return c.json({ error: 'Invalid role' }, 400);
+    }
+
+    const profileKey = `user:${user.id}:profile`;
+    const profile = await kvStore.get(profileKey);
+
+    // Verify user is admin of this org
+    const membership = profile?.organizations.find((o: any) => o.orgId === orgId);
+    if (!membership || membership.role !== 'admin') {
+      return c.json({ error: 'Only admins can invite users' }, 403);
+    }
+
+    const invites = await kvStore.get(`org:${orgId}:invites`) || [];
+    const invite = {
+      id: crypto.randomUUID(),
+      orgId,
+      email: email.toLowerCase(),
+      role,
+      status: 'pending',
+      createdAt: new Date().toISOString(),
+    };
+
+    invites.push(invite);
+    await kvStore.set(`org:${orgId}:invites`, invites);
+
+    return c.json(invite);
+  } catch (error) {
+    console.error('Error creating invite:', error);
+    return c.json({ error: 'Failed to create invite' }, 500);
+  }
+});
+
+// Accept organization invite
+app.post('/make-server-27d977d5/organizations/accept-invite', async (c) => {
+  try {
+    const user = await verifyUser(c);
+    if (!user) {
+      return c.json({ error: 'Unauthorized' }, 401);
+    }
+
+    const { inviteId, orgId } = await c.req.json();
+
+    const invites = await kvStore.get(`org:${orgId}:invites`) || [];
+    const invite = invites.find((i: any) => i.id === inviteId && i.email === user.email?.toLowerCase());
+
+    if (!invite || invite.status !== 'pending') {
+      return c.json({ error: 'Invalid or expired invite' }, 400);
+    }
+
+    // Update invite status
+    invite.status = 'accepted';
+    await kvStore.set(`org:${orgId}:invites`, invites);
+
+    // Add user to org members
+    const members = await kvStore.get(`org:${orgId}:members`) || [];
+    members.push({
+      userId: user.id,
+      email: user.email,
+      name: user.user_metadata?.name || '',
+      role: invite.role,
+      joinedAt: new Date().toISOString(),
+    });
+    await kvStore.set(`org:${orgId}:members`, members);
+
+    // Update user profile
+    const profileKey = `user:${user.id}:profile`;
+    let profile = await kvStore.get(profileKey) || {
+      userId: user.id,
+      email: user.email,
+      name: user.user_metadata?.name || '',
+      currentOrgId: null,
+      organizations: [],
+    };
+
+    profile.organizations.push({ orgId, role: invite.role });
+    if (!profile.currentOrgId) {
+      profile.currentOrgId = orgId;
+    }
+    await kvStore.set(profileKey, profile);
+
+    return c.json({ success: true, role: invite.role });
+  } catch (error) {
+    console.error('Error accepting invite:', error);
+    return c.json({ error: 'Failed to accept invite' }, 500);
+  }
+});
+
+// Update member role (admin only)
+app.put('/make-server-27d977d5/organizations/:orgId/members/:userId', async (c) => {
+  try {
+    const user = await verifyUser(c);
+    if (!user) {
+      return c.json({ error: 'Unauthorized' }, 401);
+    }
+
+    const orgId = c.req.param('orgId');
+    const targetUserId = c.req.param('userId');
+    const { role } = await c.req.json();
+
+    if (!['admin', 'editor', 'viewer'].includes(role)) {
+      return c.json({ error: 'Invalid role' }, 400);
+    }
+
+    const profileKey = `user:${user.id}:profile`;
+    const profile = await kvStore.get(profileKey);
+
+    // Verify user is admin
+    const membership = profile?.organizations.find((o: any) => o.orgId === orgId);
+    if (!membership || membership.role !== 'admin') {
+      return c.json({ error: 'Only admins can update roles' }, 403);
+    }
+
+    // Update member role
+    const members = await kvStore.get(`org:${orgId}:members`) || [];
+    const memberIndex = members.findIndex((m: any) => m.userId === targetUserId);
+    if (memberIndex === -1) {
+      return c.json({ error: 'Member not found' }, 404);
+    }
+
+    members[memberIndex].role = role;
+    await kvStore.set(`org:${orgId}:members`, members);
+
+    // Update target user's profile
+    const targetProfileKey = `user:${targetUserId}:profile`;
+    const targetProfile = await kvStore.get(targetProfileKey);
+    if (targetProfile) {
+      const orgIndex = targetProfile.organizations.findIndex((o: any) => o.orgId === orgId);
+      if (orgIndex >= 0) {
+        targetProfile.organizations[orgIndex].role = role;
+        await kvStore.set(targetProfileKey, targetProfile);
+      }
+    }
+
+    return c.json({ success: true });
+  } catch (error) {
+    console.error('Error updating member role:', error);
+    return c.json({ error: 'Failed to update role' }, 500);
+  }
+});
+
+// Remove member from organization (admin only)
+app.delete('/make-server-27d977d5/organizations/:orgId/members/:userId', async (c) => {
+  try {
+    const user = await verifyUser(c);
+    if (!user) {
+      return c.json({ error: 'Unauthorized' }, 401);
+    }
+
+    const orgId = c.req.param('orgId');
+    const targetUserId = c.req.param('userId');
+
+    const profileKey = `user:${user.id}:profile`;
+    const profile = await kvStore.get(profileKey);
+
+    // Verify user is admin
+    const membership = profile?.organizations.find((o: any) => o.orgId === orgId);
+    if (!membership || membership.role !== 'admin') {
+      return c.json({ error: 'Only admins can remove members' }, 403);
+    }
+
+    // Can't remove yourself if you're the only admin
+    if (targetUserId === user.id) {
+      const members = await kvStore.get(`org:${orgId}:members`) || [];
+      const adminCount = members.filter((m: any) => m.role === 'admin').length;
+      if (adminCount <= 1) {
+        return c.json({ error: 'Cannot remove the only admin' }, 400);
+      }
+    }
+
+    // Remove from members
+    const members = await kvStore.get(`org:${orgId}:members`) || [];
+    const filteredMembers = members.filter((m: any) => m.userId !== targetUserId);
+    await kvStore.set(`org:${orgId}:members`, filteredMembers);
+
+    // Update target user's profile
+    const targetProfileKey = `user:${targetUserId}:profile`;
+    const targetProfile = await kvStore.get(targetProfileKey);
+    if (targetProfile) {
+      targetProfile.organizations = targetProfile.organizations.filter((o: any) => o.orgId !== orgId);
+      if (targetProfile.currentOrgId === orgId) {
+        targetProfile.currentOrgId = targetProfile.organizations[0]?.orgId || null;
+      }
+      await kvStore.set(targetProfileKey, targetProfile);
+    }
+
+    return c.json({ success: true });
+  } catch (error) {
+    console.error('Error removing member:', error);
+    return c.json({ error: 'Failed to remove member' }, 500);
+  }
+});
+
+// Get pending invites for user
+app.get('/make-server-27d977d5/user/invites', async (c) => {
+  try {
+    const user = await verifyUser(c);
+    if (!user) {
+      return c.json({ error: 'Unauthorized' }, 401);
+    }
+
+    // Search all orgs for invites to this user
+    // In a real app, you'd have a more efficient index
+    const allOrgKeys = await kvStore.keys('org:*:invites');
+    const pendingInvites = [];
+
+    for (const key of allOrgKeys || []) {
+      const invites = await kvStore.get(key);
+      if (invites) {
+        for (const invite of invites) {
+          if (invite.email === user.email?.toLowerCase() && invite.status === 'pending') {
+            const org = await kvStore.get(`org:${invite.orgId}:info`);
+            pendingInvites.push({ ...invite, organizationName: org?.name || 'Unknown' });
+          }
+        }
+      }
+    }
+
+    return c.json(pendingInvites);
+  } catch (error) {
+    console.error('Error fetching invites:', error);
+    return c.json({ error: 'Failed to fetch invites' }, 500);
+  }
+});
+
 Deno.serve(app.fetch);

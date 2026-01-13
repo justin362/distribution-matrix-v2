@@ -38,7 +38,7 @@ export function Login({ onLogin, onSignup }: LoginProps) {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-600 via-purple-600 to-indigo-800 flex items-center justify-center p-6">
+    <div className="min-h-screen bg-gradient-to-br from-[#34A16E] via-[#2d8a5e] to-[#246b4a] flex items-center justify-center p-6">
       <div className="w-full max-w-md">
         {/* Logo/Brand */}
         <div className="text-center mb-8">
@@ -46,7 +46,7 @@ export function Login({ onLogin, onSignup }: LoginProps) {
             <Network className="w-12 h-12 text-white" />
           </div>
           <h1 className="text-4xl font-bold text-white mb-2">Triive</h1>
-          <p className="text-indigo-200 text-lg">Distribution Matrix Platform</p>
+          <p className="text-emerald-200 text-lg">Distribution Matrix Platform</p>
         </div>
 
         {/* Login Card */}
@@ -80,7 +80,7 @@ export function Login({ onLogin, onSignup }: LoginProps) {
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#34A16E] focus:border-transparent"
                     placeholder="John Doe"
                     required={isSignup}
                   />
@@ -98,7 +98,7 @@ export function Login({ onLogin, onSignup }: LoginProps) {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#34A16E] focus:border-transparent"
                   placeholder="you@company.com"
                   required
                 />
@@ -115,7 +115,7 @@ export function Login({ onLogin, onSignup }: LoginProps) {
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#34A16E] focus:border-transparent"
                   placeholder="••••••••"
                   required
                   minLength={6}
@@ -130,7 +130,7 @@ export function Login({ onLogin, onSignup }: LoginProps) {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-3 px-4 rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-gradient-to-r from-[#34A16E] to-[#2d8a5e] text-white py-3 px-4 rounded-lg hover:from-[#2d8a5e] hover:to-[#246b4a] transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? (
                 <>
@@ -152,7 +152,7 @@ export function Login({ onLogin, onSignup }: LoginProps) {
                 setIsSignup(!isSignup);
                 setError('');
               }}
-              className="text-indigo-600 hover:text-indigo-700 font-medium text-sm"
+              className="text-[#34A16E] hover:text-[#2d8a5e] font-medium text-sm"
             >
               {isSignup 
                 ? 'Already have an account? Sign in' 
@@ -163,7 +163,7 @@ export function Login({ onLogin, onSignup }: LoginProps) {
 
         {/* Demo Info */}
         <div className="mt-6 bg-white/10 backdrop-blur-sm rounded-lg p-4 text-center">
-          <p className="text-indigo-100 text-sm">
+          <p className="text-emerald-100 text-sm">
             🎯 Your account comes with sample data to get started quickly.
             <br />
             Clear it anytime to add your own clients and retailers.
