@@ -12,8 +12,15 @@ import { OfflineBanner } from './components/OfflineBanner';
 import { Login } from './components/Login';
 import { SettingsPanel } from './components/SettingsPanel';
 import { Dashboard } from './components/Dashboard';
+import { OrganizationSelector } from './components/OrganizationSelector';
+import { CreateOrganizationModal } from './components/CreateOrganizationModal';
+import { UserManagementPanel } from './components/UserManagementPanel';
 import { projectId, publicAnonKey } from '/utils/supabase/info';
-import type { Client, Retailer, Distribution, AnalyticsData } from './types';
+import type { Client, Retailer, Distribution, AnalyticsData, Organization, UserRole, UserProfile } from './types';
+
+interface OrganizationWithRole extends Organization {
+  role: UserRole;
+}
 
 const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-27d977d5`;
 
@@ -65,6 +72,13 @@ export default function App() {
   const [userName, setUserName] = useState('');
   const [accessToken, setAccessToken] = useState('');
 
+  // Organization state
+  const [organizations, setOrganizations] = useState<OrganizationWithRole[]>([]);
+  const [currentOrgId, setCurrentOrgId] = useState<string | null>(null);
+  const [userRole, setUserRole] = useState<UserRole>('viewer');
+  const [showCreateOrg, setShowCreateOrg] = useState(false);
+  const [showUserManagement, setShowUserManagement] = useState(false);
+
   // Fetch data from Supabase
   useEffect(() => {
     // Check for existing session
@@ -73,6 +87,7 @@ export default function App() {
 
   useEffect(() => {
     if (isAuthenticated) {
+      fetchUserProfile(); // Fetch organization data
       fetchAllData();
       // Only poll if using server data - reduce polling frequency
       const interval = setInterval(() => {
@@ -267,6 +282,111 @@ export default function App() {
       });
     } catch (err) {
       // Silently fail - analytics snapshot is not critical
+    }
+  };
+
+  // Organization management functions
+  const fetchUserProfile = async () => {
+    try {
+      const response = await fetch(`${API_URL}/user/profile`, {
+        headers: { Authorization: `Bearer ${accessToken || publicAnonKey}` },
+      });
+      if (response.ok) {
+        const profile: UserProfile = await response.json();
+        setCurrentOrgId(profile.currentOrgId);
+
+        // Convert organizations to OrganizationWithRole format
+        const orgsWithRoles: OrganizationWithRole[] = [];
+        for (const orgMembership of profile.organizations) {
+          try {
+            const orgResponse = await fetch(`${API_URL}/organizations`, {
+              headers: { Authorization: `Bearer ${accessToken || publicAnonKey}` },
+            });
+            if (orgResponse.ok) {
+              const orgs: Organization[] = await orgResponse.json();
+              const org = orgs.find(o => o.id === orgMembership.orgId);
+              if (org) {
+                orgsWithRoles.push({ ...org, role: orgMembership.role });
+              }
+            }
+          } catch (err) {
+            console.log('Could not fetch organization details');
+          }
+        }
+        setOrganizations(orgsWithRoles);
+
+        // Set current user role based on current org
+        const currentOrgMembership = profile.organizations.find(o => o.orgId === profile.currentOrgId);
+        if (currentOrgMembership) {
+          setUserRole(currentOrgMembership.role);
+        }
+      }
+    } catch (err) {
+      console.log('Could not fetch user profile');
+    }
+  };
+
+  const fetchOrganizations = async () => {
+    try {
+      const response = await fetch(`${API_URL}/organizations`, {
+        headers: { Authorization: `Bearer ${accessToken || publicAnonKey}` },
+      });
+      if (response.ok) {
+        const orgs = await response.json();
+        // Fetch user profile to get roles
+        await fetchUserProfile();
+      }
+    } catch (err) {
+      console.log('Could not fetch organizations');
+    }
+  };
+
+  const handleCreateOrganization = async (name: string) => {
+    const response = await fetch(`${API_URL}/organizations`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken || publicAnonKey}`,
+      },
+      body: JSON.stringify({ name }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to create organization');
+    }
+
+    const newOrg = await response.json();
+    // Refresh organizations and switch to new org
+    await fetchUserProfile();
+    setCurrentOrgId(newOrg.id);
+    setUserRole('admin'); // Creator is always admin
+    await fetchAllData();
+  };
+
+  const handleSwitchOrganization = async (orgId: string) => {
+    try {
+      const response = await fetch(`${API_URL}/organizations/switch`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken || publicAnonKey}`,
+        },
+        body: JSON.stringify({ orgId }),
+      });
+
+      if (response.ok) {
+        setCurrentOrgId(orgId);
+        // Update user role for the new org
+        const org = organizations.find(o => o.id === orgId);
+        if (org) {
+          setUserRole(org.role);
+        }
+        // Refresh data for the new organization
+        await fetchAllData();
+      }
+    } catch (err) {
+      console.error('Error switching organization:', err);
     }
   };
 
@@ -532,8 +652,14 @@ export default function App() {
         onManageRetailers={() => setShowRetailerManagement(true)}
         onDashboard={() => setShowDashboard(true)}
         onSettings={() => setShowSettings(true)}
+        onManageUsers={() => setShowUserManagement(true)}
         onLogout={handleLogout}
         userEmail={userEmail}
+        userRole={userRole}
+        organizations={organizations}
+        currentOrgId={currentOrgId}
+        onSwitchOrg={handleSwitchOrganization}
+        onCreateOrg={() => setShowCreateOrg(true)}
       />
       
       {useLocalData && (
@@ -631,6 +757,21 @@ export default function App() {
           retailers={retailers}
           distributions={distributions}
           analyticsData={analyticsData}
+        />
+      )}
+
+      {showCreateOrg && (
+        <CreateOrganizationModal
+          onClose={() => setShowCreateOrg(false)}
+          onCreate={handleCreateOrganization}
+        />
+      )}
+
+      {showUserManagement && currentOrgId && (
+        <UserManagementPanel
+          orgId={currentOrgId}
+          currentUserRole={userRole}
+          onClose={() => setShowUserManagement(false)}
         />
       )}
     </div>
