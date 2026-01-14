@@ -287,9 +287,11 @@ export default function App() {
 
   // Organization management functions
   const fetchUserProfile = async () => {
+    if (!accessToken) return; // Skip if not authenticated with user token
+
     try {
       const response = await fetch(`${API_URL}/user/profile`, {
-        headers: { Authorization: `Bearer ${accessToken || publicAnonKey}` },
+        headers: { Authorization: `Bearer ${accessToken}` },
       });
       if (response.ok) {
         const profile: UserProfile = await response.json();
@@ -300,7 +302,7 @@ export default function App() {
         for (const orgMembership of profile.organizations) {
           try {
             const orgResponse = await fetch(`${API_URL}/organizations`, {
-              headers: { Authorization: `Bearer ${accessToken || publicAnonKey}` },
+              headers: { Authorization: `Bearer ${accessToken}` },
             });
             if (orgResponse.ok) {
               const orgs: Organization[] = await orgResponse.json();
@@ -327,9 +329,11 @@ export default function App() {
   };
 
   const fetchOrganizations = async () => {
+    if (!accessToken) return;
+
     try {
       const response = await fetch(`${API_URL}/organizations`, {
-        headers: { Authorization: `Bearer ${accessToken || publicAnonKey}` },
+        headers: { Authorization: `Bearer ${accessToken}` },
       });
       if (response.ok) {
         const orgs = await response.json();
@@ -342,17 +346,21 @@ export default function App() {
   };
 
   const handleCreateOrganization = async (name: string) => {
+    if (!accessToken) {
+      throw new Error('Please log in again to create an organization');
+    }
+
     const response = await fetch(`${API_URL}/organizations`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${accessToken || publicAnonKey}`,
+        Authorization: `Bearer ${accessToken}`,
       },
       body: JSON.stringify({ name }),
     });
 
     if (!response.ok) {
-      const error = await response.json();
+      const error = await response.json().catch(() => ({}));
       throw new Error(error.error || 'Failed to create organization');
     }
 
@@ -365,12 +373,14 @@ export default function App() {
   };
 
   const handleSwitchOrganization = async (orgId: string) => {
+    if (!accessToken) return;
+
     try {
       const response = await fetch(`${API_URL}/organizations/switch`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken || publicAnonKey}`,
+          Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify({ orgId }),
       });
