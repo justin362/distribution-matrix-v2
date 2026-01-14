@@ -266,10 +266,44 @@ app.post('/make-server-27d977d5/auth/logout', async (c) => {
   }
 });
 
-// Get all clients
+// Helper to get user from request (returns null if not authenticated)
+async function getUserFromRequest(c: any) {
+  const authHeader = c.req.header('Authorization');
+  const token = authHeader?.replace('Bearer ', '');
+
+  if (!token) {
+    return null;
+  }
+
+  const supabase = createClient(
+    Deno.env.get('SUPABASE_URL') ?? '',
+    Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+  );
+
+  const { data, error } = await supabase.auth.getUser(token);
+  if (error || !data.user) {
+    return null;
+  }
+
+  return data.user;
+}
+
+// Get user's data key prefix (uses userId for data isolation)
+function getUserDataKey(userId: string, dataType: string) {
+  return `user:${userId}:${dataType}`;
+}
+
+// Get all clients (user-scoped)
 app.get('/make-server-27d977d5/clients', async (c) => {
   try {
-    const clients = await kvStore.get('clients') || [];
+    const user = await getUserFromRequest(c);
+    if (!user) {
+      // Return empty for unauthenticated requests
+      return c.json([]);
+    }
+
+    const key = getUserDataKey(user.id, 'clients');
+    const clients = await kvStore.get(key) || [];
     return c.json(clients);
   } catch (error) {
     console.error('Error fetching clients:', error);
@@ -277,10 +311,16 @@ app.get('/make-server-27d977d5/clients', async (c) => {
   }
 });
 
-// Get all retailers
+// Get all retailers (user-scoped)
 app.get('/make-server-27d977d5/retailers', async (c) => {
   try {
-    const retailers = await kvStore.get('retailers') || [];
+    const user = await getUserFromRequest(c);
+    if (!user) {
+      return c.json([]);
+    }
+
+    const key = getUserDataKey(user.id, 'retailers');
+    const retailers = await kvStore.get(key) || [];
     return c.json(retailers);
   } catch (error) {
     console.error('Error fetching retailers:', error);
@@ -288,10 +328,16 @@ app.get('/make-server-27d977d5/retailers', async (c) => {
   }
 });
 
-// Get all distributions
+// Get all distributions (user-scoped)
 app.get('/make-server-27d977d5/distributions', async (c) => {
   try {
-    const distributions = await kvStore.get('distributions') || [];
+    const user = await getUserFromRequest(c);
+    if (!user) {
+      return c.json([]);
+    }
+
+    const key = getUserDataKey(user.id, 'distributions');
+    const distributions = await kvStore.get(key) || [];
     return c.json(distributions);
   } catch (error) {
     console.error('Error fetching distributions:', error);
@@ -299,16 +345,22 @@ app.get('/make-server-27d977d5/distributions', async (c) => {
   }
 });
 
-// Update or create distribution
+// Update or create distribution (user-scoped)
 app.post('/make-server-27d977d5/distributions', async (c) => {
   try {
+    const user = await getUserFromRequest(c);
+    if (!user) {
+      return c.json({ error: 'Unauthorized' }, 401);
+    }
+
     const { clientId, retailerId, status, notes } = await c.req.json();
-    
+
     if (!clientId || !retailerId) {
       return c.json({ error: 'clientId and retailerId are required' }, 400);
     }
 
-    const distributions = await kvStore.get('distributions') || [];
+    const key = getUserDataKey(user.id, 'distributions');
+    const distributions = await kvStore.get(key) || [];
     const existingIndex = distributions.findIndex(
       (d: any) => d.clientId === clientId && d.retailerId === retailerId
     );
@@ -328,10 +380,11 @@ app.post('/make-server-27d977d5/distributions', async (c) => {
       distributions.push({ ...updatedDistribution, createdAt: timestamp });
     }
 
-    await kvStore.set('distributions', distributions);
+    await kvStore.set(key, distributions);
 
-    // Log the change for activity tracking
-    const activityLog = await kvStore.get('activity_log') || [];
+    // Log the change for activity tracking (user-scoped)
+    const activityKey = getUserDataKey(user.id, 'activity_log');
+    const activityLog = await kvStore.get(activityKey) || [];
     activityLog.unshift({
       id: crypto.randomUUID(),
       type: 'distribution_update',
@@ -343,7 +396,7 @@ app.post('/make-server-27d977d5/distributions', async (c) => {
     });
     // Keep only last 100 activities
     if (activityLog.length > 100) activityLog.pop();
-    await kvStore.set('activity_log', activityLog);
+    await kvStore.set(activityKey, activityLog);
 
     return c.json(updatedDistribution);
   } catch (error) {
@@ -352,16 +405,22 @@ app.post('/make-server-27d977d5/distributions', async (c) => {
   }
 });
 
-// Create new client
+// Create new client (user-scoped)
 app.post('/make-server-27d977d5/clients', async (c) => {
   try {
+    const user = await getUserFromRequest(c);
+    if (!user) {
+      return c.json({ error: 'Unauthorized' }, 401);
+    }
+
     const { name, status, statusDate } = await c.req.json();
-    
+
     if (!name || !status) {
       return c.json({ error: 'name and status are required' }, 400);
     }
 
-    const clients = await kvStore.get('clients') || [];
+    const key = getUserDataKey(user.id, 'clients');
+    const clients = await kvStore.get(key) || [];
     const newClient = {
       id: crypto.randomUUID(),
       name,
@@ -371,7 +430,7 @@ app.post('/make-server-27d977d5/clients', async (c) => {
     };
 
     clients.push(newClient);
-    await kvStore.set('clients', clients);
+    await kvStore.set(key, clients);
 
     return c.json(newClient);
   } catch (error) {
@@ -380,13 +439,19 @@ app.post('/make-server-27d977d5/clients', async (c) => {
   }
 });
 
-// Update client
+// Update client (user-scoped)
 app.put('/make-server-27d977d5/clients/:id', async (c) => {
   try {
+    const user = await getUserFromRequest(c);
+    if (!user) {
+      return c.json({ error: 'Unauthorized' }, 401);
+    }
+
     const id = c.req.param('id');
     const { name, status, statusDate } = await c.req.json();
 
-    const clients = await kvStore.get('clients') || [];
+    const key = getUserDataKey(user.id, 'clients');
+    const clients = await kvStore.get(key) || [];
     const clientIndex = clients.findIndex((client: any) => client.id === id);
 
     if (clientIndex === -1) {
@@ -401,7 +466,7 @@ app.put('/make-server-27d977d5/clients/:id', async (c) => {
       updatedAt: new Date().toISOString(),
     };
 
-    await kvStore.set('clients', clients);
+    await kvStore.set(key, clients);
 
     return c.json(clients[clientIndex]);
   } catch (error) {
@@ -410,26 +475,33 @@ app.put('/make-server-27d977d5/clients/:id', async (c) => {
   }
 });
 
-// Delete client
+// Delete client (user-scoped)
 app.delete('/make-server-27d977d5/clients/:id', async (c) => {
   try {
+    const user = await getUserFromRequest(c);
+    if (!user) {
+      return c.json({ error: 'Unauthorized' }, 401);
+    }
+
     const id = c.req.param('id');
 
-    const clients = await kvStore.get('clients') || [];
+    const clientsKey = getUserDataKey(user.id, 'clients');
+    const clients = await kvStore.get(clientsKey) || [];
     const filteredClients = clients.filter((client: any) => client.id !== id);
 
     if (clients.length === filteredClients.length) {
       return c.json({ error: 'Client not found' }, 404);
     }
 
-    await kvStore.set('clients', filteredClients);
+    await kvStore.set(clientsKey, filteredClients);
 
     // Also delete associated distributions
-    const distributions = await kvStore.get('distributions') || [];
+    const distributionsKey = getUserDataKey(user.id, 'distributions');
+    const distributions = await kvStore.get(distributionsKey) || [];
     const filteredDistributions = distributions.filter(
       (d: any) => d.clientId !== id
     );
-    await kvStore.set('distributions', filteredDistributions);
+    await kvStore.set(distributionsKey, filteredDistributions);
 
     return c.json({ success: true });
   } catch (error) {
@@ -438,16 +510,22 @@ app.delete('/make-server-27d977d5/clients/:id', async (c) => {
   }
 });
 
-// Create new retailer
+// Create new retailer (user-scoped)
 app.post('/make-server-27d977d5/retailers', async (c) => {
   try {
+    const user = await getUserFromRequest(c);
+    if (!user) {
+      return c.json({ error: 'Unauthorized' }, 401);
+    }
+
     const { name, category, type } = await c.req.json();
-    
+
     if (!name || !category || !type) {
       return c.json({ error: 'name, category, and type are required' }, 400);
     }
 
-    const retailers = await kvStore.get('retailers') || [];
+    const key = getUserDataKey(user.id, 'retailers');
+    const retailers = await kvStore.get(key) || [];
     const newRetailer = {
       id: name.toLowerCase().replace(/[^a-z0-9]/g, '-') + '-' + Date.now(),
       name,
@@ -461,7 +539,7 @@ app.post('/make-server-27d977d5/retailers', async (c) => {
     };
 
     retailers.push(newRetailer);
-    await kvStore.set('retailers', retailers);
+    await kvStore.set(key, retailers);
 
     return c.json(newRetailer);
   } catch (error) {
@@ -470,13 +548,19 @@ app.post('/make-server-27d977d5/retailers', async (c) => {
   }
 });
 
-// Update retailer
+// Update retailer (user-scoped)
 app.put('/make-server-27d977d5/retailers/:id', async (c) => {
   try {
+    const user = await getUserFromRequest(c);
+    if (!user) {
+      return c.json({ error: 'Unauthorized' }, 401);
+    }
+
     const id = c.req.param('id');
     const { name, category, type, contacts, lineReviewTiming, resetDates, notes } = await c.req.json();
 
-    const retailers = await kvStore.get('retailers') || [];
+    const key = getUserDataKey(user.id, 'retailers');
+    const retailers = await kvStore.get(key) || [];
     const retailerIndex = retailers.findIndex((retailer: any) => retailer.id === id);
 
     if (retailerIndex === -1) {
@@ -495,7 +579,7 @@ app.put('/make-server-27d977d5/retailers/:id', async (c) => {
       updatedAt: new Date().toISOString(),
     };
 
-    await kvStore.set('retailers', retailers);
+    await kvStore.set(key, retailers);
 
     return c.json(retailers[retailerIndex]);
   } catch (error) {
@@ -504,26 +588,33 @@ app.put('/make-server-27d977d5/retailers/:id', async (c) => {
   }
 });
 
-// Delete retailer
+// Delete retailer (user-scoped)
 app.delete('/make-server-27d977d5/retailers/:id', async (c) => {
   try {
+    const user = await getUserFromRequest(c);
+    if (!user) {
+      return c.json({ error: 'Unauthorized' }, 401);
+    }
+
     const id = c.req.param('id');
 
-    const retailers = await kvStore.get('retailers') || [];
+    const retailersKey = getUserDataKey(user.id, 'retailers');
+    const retailers = await kvStore.get(retailersKey) || [];
     const filteredRetailers = retailers.filter((retailer: any) => retailer.id !== id);
 
     if (retailers.length === filteredRetailers.length) {
       return c.json({ error: 'Retailer not found' }, 404);
     }
 
-    await kvStore.set('retailers', filteredRetailers);
+    await kvStore.set(retailersKey, filteredRetailers);
 
     // Also delete associated distributions
-    const distributions = await kvStore.get('distributions') || [];
+    const distributionsKey = getUserDataKey(user.id, 'distributions');
+    const distributions = await kvStore.get(distributionsKey) || [];
     const filteredDistributions = distributions.filter(
       (d: any) => d.retailerId !== id
     );
-    await kvStore.set('distributions', filteredDistributions);
+    await kvStore.set(distributionsKey, filteredDistributions);
 
     return c.json({ success: true });
   } catch (error) {
@@ -532,13 +623,19 @@ app.delete('/make-server-27d977d5/retailers/:id', async (c) => {
   }
 });
 
-// Clear all data
+// Clear all data (user-scoped)
 app.post('/make-server-27d977d5/clear-all-data', async (c) => {
   try {
-    await kvStore.set('clients', []);
-    await kvStore.set('retailers', []);
-    await kvStore.set('distributions', []);
-    
+    const user = await getUserFromRequest(c);
+    if (!user) {
+      return c.json({ error: 'Unauthorized' }, 401);
+    }
+
+    await kvStore.set(getUserDataKey(user.id, 'clients'), []);
+    await kvStore.set(getUserDataKey(user.id, 'retailers'), []);
+    await kvStore.set(getUserDataKey(user.id, 'distributions'), []);
+    await kvStore.set(getUserDataKey(user.id, 'activity_log'), []);
+
     return c.json({ success: true });
   } catch (error) {
     console.error('Error clearing data:', error);
@@ -546,10 +643,16 @@ app.post('/make-server-27d977d5/clear-all-data', async (c) => {
   }
 });
 
-// Get activity log
+// Get activity log (user-scoped)
 app.get('/make-server-27d977d5/activity', async (c) => {
   try {
-    const activityLog = await kvStore.get('activity_log') || [];
+    const user = await getUserFromRequest(c);
+    if (!user) {
+      return c.json([]);
+    }
+
+    const key = getUserDataKey(user.id, 'activity_log');
+    const activityLog = await kvStore.get(key) || [];
     return c.json(activityLog);
   } catch (error) {
     console.error('Error fetching activity log:', error);
@@ -557,13 +660,22 @@ app.get('/make-server-27d977d5/activity', async (c) => {
   }
 });
 
-// Get analytics data
+// Get analytics data (user-scoped)
 app.get('/make-server-27d977d5/analytics', async (c) => {
   try {
-    const clients = await kvStore.get('clients') || [];
-    const retailers = await kvStore.get('retailers') || [];
-    const distributions = await kvStore.get('distributions') || [];
-    const analyticsHistory = await kvStore.get('analytics_history') || [];
+    const user = await getUserFromRequest(c);
+    if (!user) {
+      return c.json({
+        current: { totalClients: 0, totalRetailers: 0, totalDistributions: 0, distributionCoverage: 0 },
+        clientsByStatus: {},
+        history: [],
+      });
+    }
+
+    const clients = await kvStore.get(getUserDataKey(user.id, 'clients')) || [];
+    const retailers = await kvStore.get(getUserDataKey(user.id, 'retailers')) || [];
+    const distributions = await kvStore.get(getUserDataKey(user.id, 'distributions')) || [];
+    const analyticsHistory = await kvStore.get(getUserDataKey(user.id, 'analytics_history')) || [];
 
     // Calculate current metrics
     const totalClients = clients.length;
@@ -599,13 +711,18 @@ app.get('/make-server-27d977d5/analytics', async (c) => {
   }
 });
 
-// Create/update analytics snapshot (called when data changes)
+// Create/update analytics snapshot (user-scoped)
 app.post('/make-server-27d977d5/analytics/snapshot', async (c) => {
   try {
-    const clients = await kvStore.get('clients') || [];
-    const retailers = await kvStore.get('retailers') || [];
-    const distributions = await kvStore.get('distributions') || [];
-    const analyticsHistory = await kvStore.get('analytics_history') || [];
+    const user = await getUserFromRequest(c);
+    if (!user) {
+      return c.json({ error: 'Unauthorized' }, 401);
+    }
+
+    const clients = await kvStore.get(getUserDataKey(user.id, 'clients')) || [];
+    const retailers = await kvStore.get(getUserDataKey(user.id, 'retailers')) || [];
+    const distributions = await kvStore.get(getUserDataKey(user.id, 'distributions')) || [];
+    const analyticsHistory = await kvStore.get(getUserDataKey(user.id, 'analytics_history')) || [];
 
     const today = new Date().toISOString().split('T')[0];
 
@@ -647,7 +764,7 @@ app.post('/make-server-27d977d5/analytics/snapshot', async (c) => {
       analyticsHistory.length = 90;
     }
 
-    await kvStore.set('analytics_history', analyticsHistory);
+    await kvStore.set(getUserDataKey(user.id, 'analytics_history'), analyticsHistory);
 
     return c.json(snapshot);
   } catch (error) {

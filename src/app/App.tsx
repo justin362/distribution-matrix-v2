@@ -212,16 +212,19 @@ export default function App() {
   };
 
   const fetchAllData = async () => {
+    // Need accessToken for user-scoped data
+    const authToken = accessToken || publicAnonKey;
+
     try {
       const [clientsRes, retailersRes, distributionsRes] = await Promise.all([
         fetch(`${API_URL}/clients`, {
-          headers: { Authorization: `Bearer ${publicAnonKey}` },
+          headers: { Authorization: `Bearer ${authToken}` },
         }).catch(() => null),
         fetch(`${API_URL}/retailers`, {
-          headers: { Authorization: `Bearer ${publicAnonKey}` },
+          headers: { Authorization: `Bearer ${authToken}` },
         }).catch(() => null),
         fetch(`${API_URL}/distributions`, {
-          headers: { Authorization: `Bearer ${publicAnonKey}` },
+          headers: { Authorization: `Bearer ${authToken}` },
         }).catch(() => null),
       ]);
 
@@ -260,9 +263,10 @@ export default function App() {
   };
 
   const fetchAnalytics = async () => {
+    const authToken = accessToken || publicAnonKey;
     try {
       const response = await fetch(`${API_URL}/analytics`, {
-        headers: { Authorization: `Bearer ${publicAnonKey}` },
+        headers: { Authorization: `Bearer ${authToken}` },
       });
       if (response.ok) {
         const data = await response.json();
@@ -274,11 +278,11 @@ export default function App() {
   };
 
   const createAnalyticsSnapshot = async () => {
-    if (useLocalData) return;
+    if (useLocalData || !accessToken) return;
     try {
       await fetch(`${API_URL}/analytics/snapshot`, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${publicAnonKey}` },
+        headers: { Authorization: `Bearer ${accessToken}` },
       });
     } catch (err) {
       // Silently fail - analytics snapshot is not critical
@@ -439,7 +443,7 @@ export default function App() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${publicAnonKey}`,
+          Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify({ clientId, retailerId, status, notes }),
       });
@@ -475,7 +479,7 @@ export default function App() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${publicAnonKey}`,
+          Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify({ name, status, statusDate }),
       });
@@ -499,7 +503,7 @@ export default function App() {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${publicAnonKey}`,
+          Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify({ name, status, statusDate }),
       });
@@ -522,7 +526,7 @@ export default function App() {
     try {
       const response = await fetch(`${API_URL}/clients/${id}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${publicAnonKey}` },
+        headers: { Authorization: `Bearer ${accessToken}` },
       });
 
       if (!response.ok) throw new Error('Failed to delete client');
@@ -554,7 +558,7 @@ export default function App() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${publicAnonKey}`,
+          Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify({ name, category, type }),
       });
@@ -578,7 +582,7 @@ export default function App() {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${publicAnonKey}`,
+          Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify({ name, category, type }),
       });
@@ -601,7 +605,7 @@ export default function App() {
     try {
       const response = await fetch(`${API_URL}/retailers/${id}`, {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${publicAnonKey}` },
+        headers: { Authorization: `Bearer ${accessToken}` },
       });
 
       if (!response.ok) throw new Error('Failed to delete retailer');
@@ -624,7 +628,7 @@ export default function App() {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${publicAnonKey}`,
+          Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify({
           name: updatedRetailer.name,
