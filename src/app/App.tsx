@@ -75,7 +75,7 @@ export default function App() {
   // Organization state
   const [organizations, setOrganizations] = useState<OrganizationWithRole[]>([]);
   const [currentOrgId, setCurrentOrgId] = useState<string | null>(null);
-  const [userRole, setUserRole] = useState<UserRole>('viewer');
+  const [userRole, setUserRole] = useState<UserRole>('admin'); // Default to admin for users without orgs
   const [showCreateOrg, setShowCreateOrg] = useState(false);
   const [showUserManagement, setShowUserManagement] = useState(false);
 
@@ -86,7 +86,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && accessToken) {
       fetchUserProfile(); // Fetch organization data
       fetchAllData();
       // Only poll if using server data - reduce polling frequency
@@ -97,7 +97,7 @@ export default function App() {
       }, 10000); // Poll every 10 seconds
       return () => clearInterval(interval);
     }
-  }, [useLocalData, isAuthenticated]);
+  }, [useLocalData, isAuthenticated, accessToken]);
 
   const checkSession = async () => {
     try {
@@ -212,19 +212,23 @@ export default function App() {
   };
 
   const fetchAllData = async () => {
-    // Need accessToken for user-scoped data
-    const authToken = accessToken || publicAnonKey;
+    // Need accessToken for user-scoped data - don't fetch without it
+    if (!accessToken) {
+      console.log('No access token yet, skipping data fetch');
+      setLoading(false);
+      return;
+    }
 
     try {
       const [clientsRes, retailersRes, distributionsRes] = await Promise.all([
         fetch(`${API_URL}/clients`, {
-          headers: { Authorization: `Bearer ${authToken}` },
+          headers: { Authorization: `Bearer ${accessToken}` },
         }).catch(() => null),
         fetch(`${API_URL}/retailers`, {
-          headers: { Authorization: `Bearer ${authToken}` },
+          headers: { Authorization: `Bearer ${accessToken}` },
         }).catch(() => null),
         fetch(`${API_URL}/distributions`, {
-          headers: { Authorization: `Bearer ${authToken}` },
+          headers: { Authorization: `Bearer ${accessToken}` },
         }).catch(() => null),
       ]);
 
@@ -263,10 +267,11 @@ export default function App() {
   };
 
   const fetchAnalytics = async () => {
-    const authToken = accessToken || publicAnonKey;
+    if (!accessToken) return;
+
     try {
       const response = await fetch(`${API_URL}/analytics`, {
-        headers: { Authorization: `Bearer ${authToken}` },
+        headers: { Authorization: `Bearer ${accessToken}` },
       });
       if (response.ok) {
         const data = await response.json();
